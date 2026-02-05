@@ -1,0 +1,21 @@
+{
+  "name": "tracname",
+  "version": "1.0.0",
+  "description": "P2P identity verification service for Intercom - the blue checkmark of the Trac Network",
+  "main": "tracname.js",
+  "scripts": {
+    "start": "node tracname.js"
+  },
+  "keywords": [
+    "intercom",
+    "trac",
+    "identity",
+    "verification",
+    "p2p"
+  ],
+  "author": "SebAi",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

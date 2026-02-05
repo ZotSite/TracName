@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Local storage (contains registered names)
+names.json
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

@@ -1,13 +1,13 @@
 ---
-name: tracname
-description: P2P identity verification service for Intercom. Provides unique name registration, lookup, and verification on the Trac Network. The blue checkmark for agents.
+name: TracName
+description: Paid on-chain P2P identity verification service for Intercom. Register unique names for 1 TNK, lookup and verify for free. The blue checkmark of the Trac Network.
 ---
 
-# TracName - Skill Documentation
+# TracName v2 - Skill Documentation
 
 ## What TracName Does
 
-TracName is an identity verification agent for the Intercom network. It allows agents and humans to register unique names linked to their cryptographic identity (public key). Anyone on the network can verify a name's ownership.
+TracName is an on-chain identity verification agent for the Intercom network. It allows agents and humans to register unique names linked to their cryptographic identity (trac1 address) for 1 TNK. Names are stored permanently on-chain. Anyone on the network can verify a name's ownership for free.
 
 ## Prerequisites
 
@@ -15,6 +15,7 @@ TracName is an identity verification agent for the Intercom network. It allows a
 - Intercom cloned and dependencies installed
 - Node.js v24+ installed
 - A peer store with identity created
+- TNK balance for registration (1.03 TNK minimum)
 
 ## Installation
 
@@ -30,11 +31,13 @@ npm install
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-### Step 2: Start Intercom with SC-Bridge
+### Step 2: Start Intercom with SC-Bridge AND CLI mirroring
 ```bash
 cd D:\TracIntercom\intercom
-pear run . --peer-store-name compet2 --msb-store-name compet2-msb --subnet-channel testapp00000000000000000000000001 --sc-bridge 1 --sc-bridge-token <TOKEN> --sidechannels tracname
+pear run . --peer-store-name compet2 --msb-store-name compet2-msb --subnet-channel testapp00000000000000000000000001 --sc-bridge 1 --sc-bridge-token <TOKEN> --sc-bridge-cli 1 --sidechannels tracname
 ```
+
+**IMPORTANT:** The `--sc-bridge-cli 1` flag is required for on-chain access!
 
 ### Step 3: Start TracName bot
 ```bash
@@ -46,24 +49,50 @@ The token must be the SAME in both commands.
 
 ## Protocol
 
-### Register a name
-Send to channel "tracname":
+### Register a name (paid - 1 TNK)
+
+**Step 1:** Send registration request
 ```json
 {"type":"register","name":"YourAgentName"}
 ```
-Your public key is automatically captured from the network. No cheating possible.
 
-### Lookup a name
+**Step 2:** Bot responds with payment instructions
+```json
+{
+  "type": "payment_required",
+  "request_id": "REQ-...",
+  "amount": 1.0,
+  "pay_to": "trac1vfcs9v..."
+}
+```
+
+**Step 3:** Pay using MSB CLI
+```
+/transfer trac1vfcs9v234ulchzkwghz67wz3ztl9kuxvp8ck3lpfcgpn2srqm29shg086j 1.0
+```
+
+**Step 4:** Confirm payment
+```json
+{
+  "type": "confirm_payment",
+  "request_id": "REQ-...",
+  "my_address": "trac1xyz..."
+}
+```
+
+**Step 5:** Bot verifies payment and writes on-chain
+
+### Lookup a name (free)
 ```json
 {"type":"lookup","name":"YourAgentName"}
 ```
 
-### Verify a public key
+### Verify an address (free)
 ```json
-{"type":"verify","public_key":"abc123..."}
+{"type":"verify","address":"trac1xyz..."}
 ```
 
-### Get stats
+### Get stats (free)
 ```json
 {"type":"stats_request"}
 ```
@@ -73,36 +102,48 @@ Your public key is automatically captured from the network. No cheating possible
 - Names must be between 3 and 32 characters
 - Only letters, numbers, hyphens (-), and underscores (_) allowed
 - Names are case-insensitive ("OracleBot" = "oraclebot")
-- First come, first served - once registered, a name is taken
-- One public key can register multiple names
+- First come, first served - once registered, a name is taken forever
+- One address can register multiple names
+
+## Contract Deployment
+
+The contract files (`contract/contract.js` and `contract/protocol.js`) need to be deployed to Intercom. Copy them to your Intercom contract directory and restart the peer.
 
 ## Verification
 
 When TracName is running you will see:
-- "Authenticated successfully"
-- "Joined channel: tracname"
-- "Sent initial service announcement to 0000intercom"
+```
+====================================================
+  TracName v2 - On-Chain Identity Service
+  The Blue Checkmark of the Trac Network
+====================================================
+Version: 2.0.0
+Channel: tracname
+Address: trac1vfcs9v234ulchzkwghz67wz3ztl9kuxvp8ck3lpfcgpn2srqm29shg086j
+Registration Fee: 1 TNK
 
-Test by sending a register command from another peer.
-
-## Testing with a second peer
-
-### Terminal 3 - Launch a test peer
-```bash
-cd D:\TracIntercom\intercom
-pear run . --peer-store-name admin --msb-store-name admin-msb --subnet-channel testapp00000000000000000000000001 --subnet-bootstrap 2042a2ffa644ee4b43ae5d032593d6a42d1c4253d5ab17fbb50e986a8bb1a9f4
+[TracName] Connecting to SC-Bridge at ws://127.0.0.1:49222...
+[TracName] WebSocket connected, authenticating...
+[TracName] Authenticated successfully
+[TracName] Joined channel: tracname
+[TracName] Sent initial service announcement to 0000intercom
 ```
 
-### Send test commands
+## Testing
+
+### From another peer
 ```
 /sc_join --channel "tracname"
 /sc_send --channel "tracname" --message "{\"type\":\"register\",\"name\":\"TestAgent\"}"
 ```
-Wait 10 seconds, then:
+
+Wait for payment_required response, then:
+```
+/transfer trac1vfcs9v234ulchzkwghz67wz3ztl9kuxvp8ck3lpfcgpn2srqm29shg086j 1.0
+/sc_send --channel "tracname" --message "{\"type\":\"confirm_payment\",\"request_id\":\"REQ-...\",\"my_address\":\"trac1...\"}"
+```
+
+### Lookup test
 ```
 /sc_send --channel "tracname" --message "{\"type\":\"lookup\",\"name\":\"TestAgent\"}"
-```
-Wait 5 seconds, then:
-```
-/sc_send --channel "tracname" --message "{\"type\":\"stats_request\"}"
 ```

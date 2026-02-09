@@ -1,8 +1,8 @@
 # Dependencies
 node_modules/
 
-# Local storage (contains registered names)
-names.json
+# Local storage (crash recovery)
+pending.json
 
 # Logs
 *.log
